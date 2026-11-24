@@ -1,6 +1,6 @@
 {
   "name": "@pairprog/storybook-addon-review",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Storybook addon: review stories, comment on an element or a region, and send the comments to your coding agent.",
   "type": "module",
   "license": "MIT",
