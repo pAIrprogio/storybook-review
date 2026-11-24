@@ -1,0 +1,18 @@
+{
+  "name": "storybook-review",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter '@pairprog/*' build",
+    "test": "bun run --filter '@pairprog/*' test",
+    "typecheck": "bun run --filter '@pairprog/*' typecheck",
+    "storybook": "bun run --filter playground storybook",
+    "review": "bun run build && STORYBOOK_REVIEW_SELF='bun run review' bun packages/storybook-addon-review/src/cli.ts"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
