@@ -2,38 +2,47 @@
 
 Review Storybook stories in your browser and hand structured comments to any coding agent.
 
-Comment on a whole story, click an element, or drag a region across any number of stories, then click **Send**. Your agent receives each comment along with its story file, test ID, accessible role/name, CSS path, bounding box, globals, and changed args.
+Comment on a whole story, click an element, or drag a region across any number of stories, then click **Send**. Your agent receives each comment with its story file, test ID, accessible role/name, CSS path, bounding box, globals, and changed args.
 
 ![Storybook Review showing element and region pins on a story with the Review panel](https://raw.githubusercontent.com/pAIrprogio/storybook-review/main/docs/screenshot.png)
 
-## Install
+## Recommended: install the agent plugin
+
+Install the [`storybook-review`](https://github.com/pAIrprogio/storybook-review) plugin for your coding agent — it launches sessions automatically and guides setup in the right workspace folder on first run.
+
+| Harness | Command |
+|---|---|
+| Claude Code | `/plugin marketplace add pAIrprogio/ai-marketplace` then `/plugin install storybook-review@ai-marketplace` |
+| [Agent Plugins](https://agent-plugins.org) (OpenCode, Codex, …) | `agentplugins add github:pAIrprogio/storybook-review//plugins/storybook-review` |
+| [Agent Skills](https://skills.sh) | `npx skills add pAIrprogio/storybook-review` |
+
+## Manual Storybook setup
 
 Requires **Storybook 10** and **Node 22+** (or **Bun**).
 
-1. Install the package:
+1. Install the package in your Storybook workspace:
    ```bash
    npm install -D @pairprog/storybook-addon-review
    ```
-2. Add it to `.storybook/main.ts`:
+2. Register it in `.storybook/main.ts`:
    ```ts
    addons: ["@pairprog/storybook-addon-review"],
    ```
 
-Pair it with the [`storybook-review` agent plugin](https://github.com/pAIrprogio/storybook-review#1-install-the-agent-plugin) so your coding agent knows when and how to invoke it.
+## How it works
 
-## Usage
+- **Lifecycle:** Reuses a Storybook already serving the addon, or starts the project's Storybook (with Bun in Bun projects, Node otherwise) and stops it after **Send**.
+- **Long sessions:** If you take longer than 8 minutes, the session prints `PENDING <id>` so the agent resumes waiting with `--wait <id>`.
+- **Zero noise:** The Review panel and toolbar button only appear in tabs opened by a review session ([ADR 0003](./docs/adr/0003-ui-only-while-an-agent-listens.md)).
 
-Run from the repo root or a Storybook directory:
+## Running the CLI directly (without the plugin)
+
+If your harness doesn't use the plugin, invoke the `storybook-review` binary directly from the Storybook workspace:
 
 ```bash
-npx storybook-review [<story ID or title prefix>] [--port 6006] [--dir <folder>]
-npx storybook-review --wait <session id>
+storybook-review [<story ID or title prefix>] [--port 6006] [--dir <folder>]
+storybook-review --wait <session id>
 ```
-
-- **Auto-discovery:** Finds `.storybook/main.*` in the current directory or below it (use `--dir` in monorepos with multiple Storybooks). Prints `SETUP_REQUIRED` with setup instructions if the addon isn't configured yet.
-- **Lifecycle:** Reuses a Storybook already serving the addon, or starts the project's Storybook (with Bun in Bun projects, Node otherwise) and stops it after **Send**.
-- **Long sessions:** If you take longer than 8 minutes, the CLI prints `PENDING <id>` so the agent can resume waiting with `--wait <id>`.
-- **Zero noise:** The Review panel and toolbar button only appear in tabs opened by the CLI ([ADR 0003](./docs/adr/0003-ui-only-while-an-agent-listens.md)).
 
 ## Environment variables
 
@@ -41,7 +50,7 @@ npx storybook-review --wait <session id>
 |---|---|
 | `STORYBOOK_REVIEW_WAIT_MS` | Wait timeout before printing `PENDING` (default: `480000`) |
 | `STORYBOOK_REVIEW_NO_OPEN=1` | Do not open a browser window automatically |
-| `STORYBOOK_REVIEW_SELF` | Command printed for follow-up runs (default: `npx storybook-review`, or `bunx` under Bun) |
+| `STORYBOOK_REVIEW_SELF` | Command printed for follow-up runs |
 
 ## Architecture decisions
 
