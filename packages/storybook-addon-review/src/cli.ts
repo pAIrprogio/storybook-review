@@ -49,9 +49,7 @@ import {
 import { formatResult } from "./format-result";
 import {
 	detectPackageManager,
-	findSetupGap,
 	findStorybookProject,
-	formatSetupGap,
 	type StorybookProject,
 	storybookCommand,
 } from "./storybook-project";
@@ -137,16 +135,6 @@ async function start(
 	project: StorybookProject,
 	deadline: number,
 ): Promise<Outcome> {
-	const manager = detectPackageManager(project.dir);
-	if ((await findReviewPort(preferredPort)) === null) {
-		const gap = await findSetupGap(project);
-		if (gap !== null) {
-			return {
-				output: formatSetupGap(project, gap, manager, process.cwd(), SELF),
-				exitCode: 1,
-			};
-		}
-	}
 	await removeOldSessions();
 	const id = randomBytes(6).toString("hex");
 	const token = randomBytes(16).toString("hex");
@@ -263,19 +251,6 @@ async function finish(
 // ---------- Storybook ----------
 
 type RunningStorybook = { readonly port: number; readonly pid: number | null };
-
-/** The first port from `preferredPort` serving the review addon, if any. */
-async function findReviewPort(preferredPort: number): Promise<number | null> {
-	for (
-		let port = preferredPort;
-		port < preferredPort + PORTS_TRIED;
-		port += 1
-	) {
-		if (await servesReview(port)) return port;
-		if (!(await isPortBusy(port))) return null;
-	}
-	return null;
-}
 
 async function ensureStorybook(
 	preferredPort: number,

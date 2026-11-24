@@ -9,17 +9,13 @@ Opens the project's Storybook with a Review panel. On any number of stories, the
 
 ## Run
 
-Run from the repo root or the Storybook folder, and allow the command up to 10 minutes:
+Run from the repo root (or the Storybook folder), and allow the command up to 10 minutes:
 
 ```
-npx --no-install storybook-review [<story ID or title prefix>] [--dir <Storybook folder>]
+node <skill-dir>/scripts/run.mjs [<story ID or title prefix>] [--dir <Storybook folder>]
 ```
 
-If `storybook-review` is not found, ask the user and install `@pairprog/storybook-addon-review` as a dev dependency and add `"@pairprog/storybook-addon-review"` to `addons` in `.storybook/main.*`, then rerun.
-
-The CLI finds the Storybook (`.storybook/main.*`) in the current folder or below it. In a monorepo with several, it uses the one that has the addon set up; if that doesn't settle it, it answers with an `ERROR` listing them: rerun with `--dir` set to the one holding the component.
-
-The argument is the story the browser opens on (`example/Button`, `example-button--primary`); without it Storybook opens its first story. The user can then move to any other story and comment there too, so one session can cover several components. The CLI reuses a Storybook that already serves the addon on port 6006 (`--port <n>` for another), or starts the project's own Storybook and stops it once the user has sent.
+The argument is the story the browser opens on (`example/Button`, `example-button--primary`); without it Storybook opens its first story. The user can then move to any other story and comment there too, so one session can cover several components. It reuses a Storybook already serving the addon on port 6006 (`--port <n>` for another), or starts the project's own Storybook and stops it once the user has sent.
 
 ## Output
 
@@ -29,7 +25,7 @@ Output starts with one of:
 - `... approved them with no comments`: continue.
 - `PENDING <id>`: the user is still reviewing. Immediately run the `--wait <id>` command the output prints.
 - `OPEN_FAILED <id>`: give the user the printed URL, then run the `--wait` command.
-- `SETUP_REQUIRED`: the addon is not installed or not listed in the Storybook config. The output gives the exact steps for this project. Ask the user, make the changes, then run the printed command again.
+- `SETUP_REQUIRED`: the addon is not installed or not listed in the Storybook config. Ask the user, follow the printed steps, then run the printed command again.
 - `ERROR: several Storybooks: …`: rerun with `--dir` set to the one holding the component; ask the user if you can't tell.
 - `CANCELLED` / any other `ERROR`: tell the user and stop.
 

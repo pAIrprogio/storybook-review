@@ -1,6 +1,6 @@
 {
   "name": "@pairprog/storybook-addon-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Storybook addon: review stories, comment on an element or a region, and send the comments to your coding agent.",
   "type": "module",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "storybook-review": "./dist/cli.js"
+    "storybook-review": "dist/cli.js"
   },
   "scripts": {
     "build": "bun run build.ts",

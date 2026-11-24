@@ -1,14 +1,12 @@
 import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 /**
- * Where the CLI finds the project's Storybook, whether the review addon is
- * set up in it, and how to run commands with the project's package manager.
+ * Where the CLI finds the project's Storybook and how to run Storybook with
+ * the project's package manager.
  */
-
-export const ADDON_PACKAGE = "@pairprog/storybook-addon-review";
 
 const CONFIG_NAMES = ["ts", "mts", "cts", "js", "mjs", "cjs"].map(
 	(extension) => `main.${extension}`,
@@ -36,8 +34,8 @@ export type ProjectSearch =
 
 /**
  * The Storybook to use: `dirArg` when given, else `cwd` when it holds
- * `.storybook/`, else the one Storybook found below `cwd`. With several
- * below, the only one that lists the addon wins; otherwise it is ambiguous.
+ * `.storybook/`, else the single Storybook found below `cwd`. Multiple
+ * Storybooks below `cwd` are always ambiguous and require `--dir`.
  *
  * @example
  * await findStorybookProject("/repo", undefined);
@@ -61,14 +59,6 @@ export async function findStorybookProject(
 		return { kind: "found", project: only };
 	}
 	if (found.length === 0) return { kind: "none" };
-	const withAddon: StorybookProject[] = [];
-	for (const project of found) {
-		if (await listsAddon(project)) withAddon.push(project);
-	}
-	const [configured] = withAddon;
-	if (configured !== undefined && withAddon.length === 1) {
-		return { kind: "found", project: configured };
-	}
 	return { kind: "ambiguous", dirs: found.map((project) => project.dir) };
 }
 
@@ -99,44 +89,6 @@ async function searchBelow(
 		else found.push(...(await searchBelow(child, depth + 1)));
 	}
 	return found.sort((a, b) => a.dir.localeCompare(b.dir));
-}
-
-/** What is missing for the addon to run in a Storybook. */
-export type SetupGap = {
-	readonly isInstalled: boolean;
-	readonly isListed: boolean;
-};
-
-/**
- * Whether the addon resolves from the project folder and is named in its
- * Storybook config. Null when both hold.
- *
- * @example
- * await findSetupGap(project); // null
- * await findSetupGap(freshProject); // { isInstalled: false, isListed: false }
- */
-export async function findSetupGap(
-	project: StorybookProject,
-): Promise<SetupGap | null> {
-	const isInstalled = resolvesAddon(project.dir);
-	const isListed = await listsAddon(project);
-	return isInstalled && isListed ? null : { isInstalled, isListed };
-}
-
-function resolvesAddon(dir: string): boolean {
-	try {
-		createRequire(join(dir, "package.json")).resolve(
-			`${ADDON_PACKAGE}/package.json`,
-		);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-async function listsAddon(project: StorybookProject): Promise<boolean> {
-	const config = await readFile(project.configPath, "utf8").catch(() => "");
-	return config.includes(ADDON_PACKAGE);
 }
 
 /** The package manager whose lockfile is nearest above `dir`. */
@@ -196,46 +148,4 @@ function binOf(manifest: unknown): string | null {
 	if (typeof bin !== "object" || bin === null) return null;
 	const named = Reflect.get(bin, "storybook");
 	return typeof named === "string" ? named : null;
-}
-
-const INSTALL_COMMANDS: Record<PackageManager, string> = {
-	bun: `bun add -d ${ADDON_PACKAGE}`,
-	pnpm: `pnpm add -D ${ADDON_PACKAGE}`,
-	yarn: `yarn add -D ${ADDON_PACKAGE}`,
-	npm: `npm install -D ${ADDON_PACKAGE}`,
-};
-
-/**
- * The `SETUP_REQUIRED` output: what is missing and the steps to fix it,
- * with paths relative to `cwd`.
- *
- * @example
- * formatSetupGap(project, { isInstalled: false, isListed: false }, "bun", "/repo", "npx storybook-review");
- * // "SETUP_REQUIRED\nThe Storybook in apps/web does not have the review addon. …"
- */
-export function formatSetupGap(
-	project: StorybookProject,
-	gap: SetupGap,
-	manager: PackageManager,
-	cwd: string,
-	self: string,
-): string {
-	const dir = relative(cwd, project.dir) || ".";
-	const config = relative(cwd, project.configPath);
-	const steps: string[] = [];
-	if (!gap.isInstalled) {
-		steps.push(`In ${dir}, run: ${INSTALL_COMMANDS[manager]}`);
-	}
-	if (!gap.isListed) {
-		steps.push(`In ${config}, add "${ADDON_PACKAGE}" to the \`addons\` array.`);
-	}
-	const numbered = steps.map((step, index) => `${index + 1}. ${step}`);
-	const rerun = dir === "." ? self : `${self} --dir ${dir}`;
-	return [
-		"SETUP_REQUIRED",
-		`The Storybook in ${dir} does not have the review addon set up. Ask the user, then:`,
-		...numbered,
-		`Then run again: ${rerun}`,
-		"",
-	].join("\n");
 }

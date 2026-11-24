@@ -1,6 +1,6 @@
 {
   "name": "storybook-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Review Storybook stories in your browser and hand the comments to your harness.",
   "author": { "name": "pairprog.io" },
   "license": "MIT"
