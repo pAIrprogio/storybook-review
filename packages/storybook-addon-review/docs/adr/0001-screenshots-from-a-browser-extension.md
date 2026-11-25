@@ -80,7 +80,7 @@ Browser extension. It is the only option that gives real pixels in the user's ow
 
 ## Revisit triggers
 
-- HTML-in-Canvas reaches Baseline: the overlay can draw the picked element itself, with no extension.
+- HTML-in-Canvas can draw elements outside its canvas: the overlay can then draw the picked element itself, with no extension. Reaching Baseline is not enough (see Spike results).
 - Chrome restricts `captureVisibleTab` for unpacked extensions or `localhost` pages.
 - The plugin is extracted and published: the extension then needs a store listing or signed builds.
 
@@ -100,3 +100,18 @@ Browser extension. It is the only option that gives real pixels in the user's ow
 - Chrome `tabs.captureVisibleTab`: https://developer.chrome.com/docs/extensions/reference/api/tabs#method-captureVisibleTab
 - Chrome remote debugging change (Chrome 136): https://developer.chrome.com/blog/remote-debugging-port
 - Firefox temporary add-ons: https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/
+
+## Spike results (2026-11-25)
+
+Tested in Playwright's Chromium with the unpacked extension (`packages/storybook-review-extension`, built with vite-plugin-web-extension) against the playground Storybook.
+
+- **Permission:** host permissions for `http://localhost/*` and `http://127.0.0.1/*` are refused: "Either the '<all_urls>' or 'activeTab' permission is required." The extension asks for `<all_urls>`. Its content script still runs only on `http://localhost/iframe.html*` and `http://127.0.0.1/iframe.html*`; those patterns match any port.
+- **Frames to wait:** hiding the overlay and waiting 2 animation frames leaves no outline, pin or banner in the capture.
+- **Crop scale:** headless Chromium captures at 1× even with a device scale factor of 2, so the crop scale is the image width divided by the top window's width, not `devicePixelRatio`. This also covers browser zoom: at 75% and 150% (set with `chrome.tabs.setZoom`), crops of an element, a region and the whole canvas are their CSS boxes × the zoom, to the pixel. Not yet checked in headed Chrome on a Retina display.
+- **`activeTab` instead of `<all_urls>`** (Chromium 159, action run through the DevTools protocol's `Extensions.triggerAction`): capture is refused until the user clicks the extension's toolbar icon. After one click it keeps working through story and component switches and a same-origin reload, and stops on a move to another origin. That is one click per review session, since the CLI opens a new tab each time. **Kept `<all_urls>`**: no per-session step, which is a decision driver above, at the cost of Chrome's "read and change all your data on all websites" warning at install. The content script still runs only on Storybook previews on localhost.
+- **HTML-in-Canvas** (2026-11-25): `drawElementImage` is available without a flag in Chrome 158, and the canvas attribute is now `content="drawable"`. It only draws descendants of the canvas doing the drawing; for any other element Chrome refuses: "The element can only be drawn into its nearest ancestor `<canvas>`." Using it would mean rendering every story inside a canvas, so it cannot capture the story as it is.
+- **OS screenshot from the dev server** (dropped 2026-11-25): the preset would run `screencapture` and locate the canvas with on-screen markers. It needs macOS Screen Recording granted to each app that starts Storybook (terminal, IDE, agent app). Without the grant, `screencapture` fails silently, with no prompt. The grant lets the app record the whole screen, a broader permission than the extension's `<all_urls>`. Dropped before measuring crop accuracy.
+- **Firefox** (161, loaded as a temporary add-on through WebDriver BiDi): the same code works once built with a background script instead of a service worker, plus a `gecko` add-on ID. Crops match their CSS boxes to the pixel, and no extra site-permission step was needed for the temporary add-on. The content script can start after the preview's first scripts, so the overlay pings every 250 ms for up to 3 s rather than once.
+- **Distribution:** the tag workflow attaches the Chrome zip and a Firefox `.xpi` to each GitHub release. Mozilla signs the `.xpi` as an unlisted add-on (`web-ext sign`), so Firefox keeps it after a restart. 1.0.3 was signed by hand on addons.mozilla.org.
+- **Rate limit:** two captures less than a second apart can hit `MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND`; the service worker retries up to 3 times, 600 ms apart.
+- **Paths:** the extension lives in `packages/storybook-review-extension/`, not `apps/web/.storybook/annotate/extension/` as written above. Screenshots go to `<tmp>/storybook-review/<session id>-screenshots/comment-<n>.png`.
