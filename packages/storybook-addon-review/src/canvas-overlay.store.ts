@@ -328,11 +328,25 @@ function positionAt(element: HTMLElement, box: Box): void {
 }
 
 // The overlay is a shadow tree, so the story's styles never reach it. It
-// uses the design system's tokens, which inherit through the shadow
-// boundary and follow the story's colour scheme.
+// defines its own tokens on :host (the accent is Storybook's secondary
+// colour, as on the panel's pins) and follows the OS colour scheme.
 const OVERLAY_HTML = `
 <style>
-	:host { position: absolute; inset: 0 auto auto 0; width: 0; height: 0; z-index: 2147483647; }
+	:host {
+		position: absolute; inset: 0 auto auto 0; width: 0; height: 0; z-index: 2147483647;
+		--ab-color-accent: #029cfd; --ab-color-accent-fg: #fff; --ab-color-accent-subtle: rgb(2 156 253 / 0.35); --ab-color-focus: #0071c2;
+		--ab-color-fg: #2e3438; --ab-color-border: hsl(212 50% 30% / 0.15); --ab-color-surface-raised: #fff;
+		--ab-shadow-overlay: 0 2px 6px rgb(0 0 0 / 0.18);
+		--ab-border-width: 1px; --ab-border-width-strong: 2px;
+		--ab-radius-1: 3px; --ab-radius-2: 4px; --ab-radius-full: 999px;
+		--ab-space-1: 4px; --ab-space-2: 8px; --ab-space-3: 10px; --ab-space-5: 20px;
+		--ab-text-xs: 12px; --ab-font-weight-medium: 500; --ab-font-weight-semibold: 700;
+		--ab-font-sans: "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		--ab-font-mono: ui-monospace, Menlo, Monaco, "Courier New", monospace;
+	}
+	@media (prefers-color-scheme: dark) {
+		:host { --ab-color-fg: #c9cdcf; --ab-color-border: hsl(0 0% 100% / 0.1); --ab-color-surface-raised: #222425; --ab-color-focus: #7cc4fa; }
+	}
 	[hidden] { display: none !important; }
 	.pins { position: absolute; inset: 0 auto auto 0; }
 	.pin, .hover, .drag { position: absolute; inset: 0 auto auto 0; box-sizing: border-box; pointer-events: none; border-radius: var(--ab-radius-2); }
