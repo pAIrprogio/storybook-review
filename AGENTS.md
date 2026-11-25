@@ -6,6 +6,7 @@
 |---|---|---|
 | `packages/storybook-addon-review` | Storybook addon (panel, canvas overlay, dev-server routes) and `storybook-review` CLI | npm `@pairprog/storybook-addon-review` |
 | `plugins/storybook-review` | Agent plugin (skill only, no code) | [ai-marketplace](https://github.com/pAIrprogio/ai-marketplace), Agent Plugins, Agent Skills |
+| `packages/storybook-review-extension` | Chrome and Firefox extension that screenshots what the user comments on (Vite + vite-plugin-web-extension) | Zips on each GitHub release |
 | `packages/playground` | Minimal Storybook for local addon development | — |
 
 ## Develop
