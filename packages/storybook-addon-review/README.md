@@ -2,7 +2,7 @@
 
 Review Storybook stories in your browser and hand structured comments to any coding agent.
 
-Comment on a whole story, click an element, or drag a region across any number of stories, then click **Send**. Your agent receives each comment with its story file, test ID, accessible role/name, CSS path, bounding box, globals, and changed args.
+Comment on a whole story, click an element, or drag a region across any number of stories, then click **Send**. Your agent receives each comment with its story file, test ID, accessible role/name, CSS path, bounding box, globals, and changed args. With the [browser extension](../storybook-review-extension), each comment also carries a screenshot of what you saw when you commented.
 
 ![Storybook Review showing element and region pins on a story with the Review panel](https://raw.githubusercontent.com/pAIrprogio/storybook-review/main/docs/screenshot.png)
 
@@ -34,6 +34,7 @@ Requires **Storybook 10** and **Node 22+** (or **Bun**).
 - **Lifecycle:** Reuses a Storybook already serving the addon, or starts the project's Storybook (with Bun in Bun projects, Node otherwise) and stops it after **Send**.
 - **Long sessions:** If you take longer than 8 minutes, the session prints `PENDING <id>` so the agent resumes waiting with `--wait <id>`.
 - **Zero noise:** The Review panel and toolbar button only appear in tabs opened by a review session ([ADR 0003](./docs/adr/0003-ui-only-while-an-agent-listens.md)).
+- **Screenshots:** If the [browser extension](../storybook-review-extension) is installed, each comment's screenshot is saved as `comment-<n>.png` and printed in the agent's output. Without it, a notice in the panel points to the install steps and comments go out without screenshots.
 
 ## Running the CLI directly (without the plugin)
 
