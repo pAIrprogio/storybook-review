@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "storybook-review",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Review Storybook stories in your browser, comment on a story, an element or a region, and hand the comments to your coding harness.",
   "author": { "name": "pairprog.io" },
   "repository": "https://github.com/pAIrprogio/storybook-review",
