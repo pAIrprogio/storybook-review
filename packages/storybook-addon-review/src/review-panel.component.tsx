@@ -104,9 +104,8 @@ export function ReviewPanel({
 				) : null}
 				{current === undefined ? (
 					<Muted>
-						No comments on this story yet. Comment on the story as a whole, or
-						pick an element (click) or a region (drag) on the canvas
-						{` (${pickShortcutLabel}).`}
+						No comments yet — comment on the story, or pick or drag on the
+						canvas{` (${pickShortcutLabel}).`}
 					</Muted>
 				) : (
 					<CommentList
@@ -167,14 +166,13 @@ const EXTENSION_INSTALL_URL =
 
 function ExtensionNotice() {
 	return (
-		<Notice>
-			Comments go without screenshots: the Storybook Review extension is not
-			installed in this browser.{" "}
+		<Muted>
+			Comments go without screenshots —{" "}
 			<a href={EXTENSION_INSTALL_URL} target="_blank" rel="noreferrer">
-				Install it
+				install the extension
 			</a>{" "}
 			to send the agent what you see.
-		</Notice>
+		</Muted>
 	);
 }
 
