@@ -21,7 +21,7 @@ The argument is the story the browser opens on (`example/Button`, `example-butto
 
 Output starts with one of:
 
-- `ANNOTATIONS for Storybook stories (<folder>)`: numbered comments, grouped by story, each story with its ID and stories file. An element or region comment says where it points: CSS path, test ID, role and accessible name, text, box, globals, changed args. Address every comment; make the edits unless the user only wanted feedback. Report back per comment number.
+- `ANNOTATIONS for Storybook stories (<folder>)`: numbered comments, grouped by story, each story with its ID and stories file. An element or region comment says where it points: CSS path, test ID, role and accessible name, text, box, globals, changed args. A `Screenshot:` line gives a PNG of what the user saw when commenting (needs the Storybook Review browser extension); open it before editing. Address every comment; make the edits unless the user only wanted feedback. Report back per comment number.
 - `... approved them with no comments`: continue.
 - `PENDING <id>`: the user is still reviewing. Immediately run the `--wait <id>` command the output prints.
 - `OPEN_FAILED <id>`: give the user the printed URL, then run the `--wait` command.

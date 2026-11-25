@@ -22,6 +22,7 @@ export type Draft =
 			readonly target: AnnotationTarget;
 			readonly args: Annotation["args"];
 			readonly globals: Annotation["globals"];
+			readonly screenshotId: string | null;
 	  }
 	| { readonly kind: "edit"; readonly id: string };
 
@@ -39,6 +40,9 @@ export type SendStatus =
 	| { readonly kind: "done"; readonly outcome: "sent" | "cancelled" }
 	| { readonly kind: "failed"; readonly message: string };
 
+/** Whether the screenshot extension answers in the preview. */
+export type ExtensionStatus = "unknown" | "installed" | "missing";
+
 /** The whole manager-side state. */
 export type ReviewState = {
 	readonly session: SessionKey | null;
@@ -49,6 +53,7 @@ export type ReviewState = {
 	readonly picking: boolean;
 	readonly focusedId: string | null;
 	readonly sendStatus: SendStatus;
+	readonly extension: ExtensionStatus;
 };
 
 /** A framework-free observable over `ReviewState`. */
@@ -81,6 +86,7 @@ export function createReviewStore(
 		picking: false,
 		focusedId: null,
 		sendStatus: { kind: "idle" },
+		extension: "unknown",
 	};
 	const listeners = new Set<() => void>();
 	return {
@@ -137,6 +143,7 @@ export function addAnnotation(
 		text: trimmed,
 		args: draft.args,
 		globals: draft.globals,
+		screenshotId: draft.screenshotId,
 		createdAt: now,
 	};
 	return {

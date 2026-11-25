@@ -15,6 +15,7 @@ import {
 	pageBoxOf,
 	roundBox,
 } from "./element-descriptor.value-object";
+import { captureBox, isExtensionInstalled } from "./screenshot.adapter";
 
 /**
  * The storybook-review overlay on the story canvas (preview iframe): pick
@@ -41,10 +42,11 @@ export type CanvasState = {
 	readonly pins: readonly CanvasPin[];
 };
 
-/** Payload of `REVIEW_EVENTS.picked`. */
+/** Payload of `REVIEW_EVENTS.picked`. `shotId` names its screenshot, if one follows. */
 export type PickedPayload = {
 	readonly storyId: string;
 	readonly target: CanvasTarget;
+	readonly shotId: string;
 };
 
 const HOST_TAG = "storybook-review-overlay";
@@ -88,6 +90,19 @@ export function installCanvasOverlay(): () => void {
 	let isDragging = false;
 
 	const isOverlay = (element: Element) => element === host;
+	const extensionInstalled = isExtensionInstalled();
+	let isStatusSent = false;
+
+	// Hide the overlay for the captured frame, so the screenshot shows the
+	// story as the user saw it, without the hover outline, drag box or pins.
+	const captureAndSend = async (box: Box, shotId: string) => {
+		if (!(await extensionInstalled)) return;
+		host.style.visibility = "hidden";
+		await nextFrames(2);
+		const dataUrl = await captureBox(box).catch(() => null);
+		host.style.visibility = "";
+		if (dataUrl !== null) channel.emit(REVIEW_EVENTS.screenshot, { shotId, dataUrl });
+	};
 
 	const renderPins = () => {
 		const isCurrent =
@@ -124,6 +139,19 @@ export function installCanvasOverlay(): () => void {
 		state = next;
 		setPicking(next.picking);
 		renderPins();
+		// The manager listens once it sends a state: tell it about the extension.
+		if (!isStatusSent) {
+			isStatusSent = true;
+			extensionInstalled.then((installed) =>
+				channel.emit(REVIEW_EVENTS.extensionStatus, installed),
+			);
+		}
+	};
+
+	const onCaptureStory = (shotId: unknown) => {
+		if (typeof shotId !== "string") return;
+		const viewport = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+		void captureAndSend(viewport, shotId);
 	};
 
 	const onStoryRendered = (storyId: string) => {
@@ -131,10 +159,12 @@ export function installCanvasOverlay(): () => void {
 		renderPins();
 	};
 
-	const emitPicked = (target: CanvasTarget) => {
+	const emitPicked = (target: CanvasTarget, visibleBox: Box) => {
 		if (renderedStoryId === null) return;
-		const payload: PickedPayload = { storyId: renderedStoryId, target };
+		const shotId = crypto.randomUUID();
+		const payload: PickedPayload = { storyId: renderedStoryId, target, shotId };
 		channel.emit(REVIEW_EVENTS.picked, payload);
+		void captureAndSend(visibleBox, shotId);
 	};
 
 	const onPointerMove = (event: PointerEvent) => {
@@ -184,7 +214,8 @@ export function installCanvasOverlay(): () => void {
 		// Picking stays on after a pick, until the user turns it off.
 		endDrag();
 		if (wasDragging) {
-			emitPicked(regionTarget(rectBetween(start, event), isOverlay));
+			const rect = rectBetween(start, event);
+			emitPicked(regionTarget(rect, isOverlay), rect);
 			return;
 		}
 		const element = deepElementFromPoint(
@@ -193,11 +224,15 @@ export function installCanvasOverlay(): () => void {
 			isOverlay,
 		);
 		if (element === null) return;
-		emitPicked({
-			kind: "element",
-			element: describeElement(element),
-			viewport: viewportNow(),
-		});
+		const rect = element.getBoundingClientRect();
+		emitPicked(
+			{
+				kind: "element",
+				element: describeElement(element),
+				viewport: viewportNow(),
+			},
+			{ x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+		);
 	};
 
 	const onKeyDown = (event: KeyboardEvent) => {
@@ -218,12 +253,14 @@ export function installCanvasOverlay(): () => void {
 	pickLayer.addEventListener("pointerup", onPointerUp);
 	window.addEventListener("keydown", onKeyDown, true);
 	channel.on(REVIEW_EVENTS.canvasState, onCanvasState);
+	channel.on(REVIEW_EVENTS.captureStory, onCaptureStory);
 	channel.on(STORY_RENDERED, onStoryRendered);
 
 	const dispose = () => {
 		cancelAnimationFrame(frame);
 		window.removeEventListener("keydown", onKeyDown, true);
 		channel.off(REVIEW_EVENTS.canvasState, onCanvasState);
+		channel.off(REVIEW_EVENTS.captureStory, onCaptureStory);
 		channel.off(STORY_RENDERED, onStoryRendered);
 		host.remove();
 		Reflect.deleteProperty(window, OVERLAY_GLOBAL);
@@ -319,6 +356,14 @@ function hoverLabelOf(element: Element): string {
 	return testId === null
 		? element.localName
 		: `${element.localName} [${testId}]`;
+}
+
+function nextFrames(count: number): Promise<void> {
+	return new Promise((resolve) => {
+		const step = (left: number) =>
+			left === 0 ? resolve() : requestAnimationFrame(() => step(left - 1));
+		step(count);
+	});
 }
 
 function positionAt(element: HTMLElement, box: Box): void {

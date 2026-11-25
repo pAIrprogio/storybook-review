@@ -15,7 +15,7 @@ import {
  * `ANNOTATIONS` with numbered comments grouped by story, the approval line,
  * or `CANCELLED`. `projectDir` is the Storybook project folder relative to
  * where the CLI runs; stories file paths are printed relative to the same
- * place.
+ * place. `screenshots` maps a comment ID to the PNG the CLI saved for it.
  *
  * @example
  * formatResult({ kind: "cancelled" }, ".");
@@ -26,6 +26,7 @@ import {
 export function formatResult(
 	result: AnnotationResult,
 	projectDir: string,
+	screenshots: ReadonlyMap<string, string> = new Map(),
 ): string {
 	if (result.kind === "cancelled") {
 		return "CANCELLED: the user discarded the Storybook annotation session without sending comments.\n";
@@ -48,7 +49,8 @@ export function formatResult(
 			`Story ID: ${group.story.id} · File: ${normalize(join(projectDir, group.story.importPath))}\n`;
 		const comments = group.annotations.map((annotation, index) => {
 			number += 1;
-			return formatAnnotation(annotation, number, index + 1);
+			const screenshot = screenshots.get(annotation.id) ?? null;
+			return formatAnnotation(annotation, number, index + 1, screenshot);
 		});
 		return storyHeader + comments.join("");
 	});
@@ -57,10 +59,30 @@ export function formatResult(
 	return header + intro + sections.join("") + generalSection;
 }
 
+/**
+ * The number each comment gets in the output: one sequence across stories,
+ * in story groups.
+ *
+ * @example
+ * commentNumbers([onStoryA, onStoryB, alsoOnStoryA]); // Map { a1 → 1, a2 → 2, b1 → 3 }
+ */
+export function commentNumbers(
+	annotations: readonly Annotation[],
+): Map<string, number> {
+	const numbers = new Map<string, number>();
+	for (const group of groupByStory(annotations)) {
+		for (const annotation of group.annotations) {
+			numbers.set(annotation.id, numbers.size + 1);
+		}
+	}
+	return numbers;
+}
+
 function formatAnnotation(
 	annotation: Annotation,
 	number: number,
 	pin: number,
+	screenshot: string | null,
 ): string {
 	const { target } = annotation;
 	const lines: string[] = [];
@@ -87,6 +109,9 @@ function formatAnnotation(
 			const unhandled: never = target;
 			throw new Error(`Unhandled target: ${JSON.stringify(unhandled)}`);
 		}
+	}
+	if (screenshot !== null) {
+		lines.push(`Screenshot: ${screenshot} (what the user saw when commenting)`);
 	}
 	lines.push(`Globals: ${globalsText(annotation.globals)}`);
 	if (Object.keys(annotation.args).length > 0) {

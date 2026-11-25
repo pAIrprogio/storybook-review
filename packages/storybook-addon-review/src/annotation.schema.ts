@@ -43,7 +43,29 @@ export const REVIEW_EVENTS = {
 	pickCancelled: `${REVIEW_ADDON_ID}/pick-cancelled`,
 	/** preview → manager: the user clicked a pin. */
 	pinSelected: `${REVIEW_ADDON_ID}/pin-selected`,
+	/** manager → preview: capture the visible canvas for a whole-story comment. */
+	captureStory: `${REVIEW_ADDON_ID}/capture-story`,
+	/** preview → manager: a screenshot for a pick or a whole-story comment. */
+	screenshot: `${REVIEW_ADDON_ID}/screenshot`,
+	/** preview → manager: whether the screenshot extension answers. */
+	extensionStatus: `${REVIEW_ADDON_ID}/extension-status`,
 } as const;
+
+/**
+ * Names a screenshot from the moment the user picks until the CLI saves it:
+ * the comment keeps it, the preview sends the image under it, the server
+ * stores the image under it.
+ */
+export const shotIdSchema = z.string().regex(/^[a-z0-9-]{8,64}$/);
+
+/** Payload of `REVIEW_EVENTS.screenshot`. */
+export const screenshotPayloadSchema = z.object({
+	shotId: shotIdSchema,
+	dataUrl: z.string().startsWith("data:image/png;base64,"),
+});
+
+/** Payload of `REVIEW_EVENTS.screenshot`. */
+export type ScreenshotPayload = z.infer<typeof screenshotPayloadSchema>;
 
 /** A rectangle in CSS pixels, in the story canvas's page coordinates. */
 export const boxSchema = z.object({
@@ -135,6 +157,8 @@ export type StoryRef = z.infer<typeof storyRefSchema>;
 /**
  * One comment. `args` holds only the args the user changed from the story's
  * own; `globals` the toolbar values (`scheme`) when the comment was made.
+ * `screenshotId` names the screenshot taken when the user picked, if the
+ * extension took one (comments saved before screenshots existed have null).
  */
 export const annotationSchema = z.object({
 	id: z.string(),
@@ -143,6 +167,7 @@ export const annotationSchema = z.object({
 	text: z.string(),
 	args: z.record(z.string(), z.unknown()),
 	globals: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+	screenshotId: shotIdSchema.nullable().default(null),
 	createdAt: z.number(),
 });
 
@@ -175,6 +200,11 @@ export type SessionKey = z.infer<typeof sessionKeySchema>;
 export const resultRequestSchema = sessionKeySchema.extend({
 	result: annotationResultSchema,
 });
+
+/** Body of `POST <REVIEW_ROUTE>/screenshot`, sent by the manager. */
+export const screenshotRequestSchema = sessionKeySchema.extend(
+	screenshotPayloadSchema.shape,
+);
 
 /** `GET <REVIEW_ROUTE>/session`: whether the user has sent yet. */
 export const sessionStatusSchema = z.object({
