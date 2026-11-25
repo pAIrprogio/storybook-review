@@ -93,14 +93,15 @@ export function installCanvasOverlay(): () => void {
 	const extensionInstalled = isExtensionInstalled();
 	let isStatusSent = false;
 
-	// Hide the overlay for the captured frame, so the screenshot shows the
-	// story as the user saw it, without the hover outline, drag box or pins.
+	// Hide what the overlay draws for the captured frame, so the screenshot
+	// shows the story as the user saw it. The transparent pick layer stays,
+	// so a click during the capture still picks instead of reaching the story.
 	const captureAndSend = async (box: Box, shotId: string) => {
 		if (!(await extensionInstalled)) return;
-		host.style.visibility = "hidden";
+		host.toggleAttribute("data-capturing", true);
 		await nextFrames(2);
 		const dataUrl = await captureBox(box).catch(() => null);
-		host.style.visibility = "";
+		host.toggleAttribute("data-capturing", false);
 		if (dataUrl !== null) channel.emit(REVIEW_EVENTS.screenshot, { shotId, dataUrl });
 	};
 
@@ -393,6 +394,7 @@ const OVERLAY_HTML = `
 		:host { --ab-color-fg: #c9cdcf; --ab-color-border: hsl(0 0% 100% / 0.1); --ab-color-surface-raised: #222425; --ab-color-focus: #7cc4fa; }
 	}
 	[hidden] { display: none !important; }
+	:host([data-capturing]) :is(.pins, .banner, .hover, .drag) { visibility: hidden; }
 	.pins { position: absolute; inset: 0 auto auto 0; }
 	.pin, .hover, .drag { position: absolute; inset: 0 auto auto 0; box-sizing: border-box; pointer-events: none; border-radius: var(--ab-radius-2); }
 	.pin { outline: var(--ab-border-width) dashed var(--ab-color-accent); outline-offset: 1px; }
