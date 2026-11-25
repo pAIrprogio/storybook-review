@@ -1,0 +1,19 @@
+{
+  "name": "@pairprog/storybook-review-extension",
+  "version": "1.0.3",
+  "private": true,
+  "description": "Browser extension that lets the storybook-review addon screenshot what the user sees.",
+  "type": "module",
+  "scripts": {
+    "build": "TARGET=chrome vite build && TARGET=firefox vite build",
+    "build:chrome": "TARGET=chrome vite build",
+    "build:firefox": "TARGET=firefox vite build",
+    "dev": "vite build --watch --mode development",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.3.8",
+    "vite": "8.3.8",
+    "vite-plugin-web-extension": "4.5.1"
+  }
+}
