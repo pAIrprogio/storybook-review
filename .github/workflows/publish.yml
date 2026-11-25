@@ -27,6 +27,7 @@ jobs:
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           for file in \
             packages/storybook-addon-review/package.json \
+            packages/storybook-review-extension/package.json \
             plugins/storybook-review/plugin.json \
             plugins/storybook-review/.claude-plugin/plugin.json
           do
@@ -45,3 +46,55 @@ jobs:
       - name: Publish to npm
         working-directory: packages/storybook-addon-review
         run: npm publish --provenance --access public
+
+  # Each release carries the browser extension: a zip to load unpacked in
+  # Chrome, and an .xpi signed by addons.mozilla.org (unlisted: signed, not
+  # published on the store) that Firefox installs for good.
+  release-extensions:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @pairprog/storybook-review-extension build
+
+      - name: Zip the Chrome build and the extension's source
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p release
+          (cd packages/storybook-review-extension/dist/chrome &&
+            zip -qr "$GITHUB_WORKSPACE/release/storybook-review-extension-chrome-$VERSION.zip" .)
+          # Mozilla asks for the source of bundled code: it rebuilds with
+          # `bun install && bun run build:firefox` (see the README inside).
+          (cd packages/storybook-review-extension &&
+            zip -qr "$RUNNER_TEMP/storybook-review-extension-source.zip" \
+              README.md package.json tsconfig.json vite.config.ts src)
+
+      # Each version can be signed only once: the tag's version must be new
+      # to addons.mozilla.org.
+      - name: Sign the Firefox add-on on addons.mozilla.org
+        shell: bash
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          bunx web-ext@10.8.0 sign --channel unlisted \
+            --source-dir packages/storybook-review-extension/dist/firefox \
+            --upload-source-code "$RUNNER_TEMP/storybook-review-extension-source.zip" \
+            --artifacts-dir "$RUNNER_TEMP/signed" \
+            --approval-timeout 1800000
+          mv "$RUNNER_TEMP"/signed/*.xpi "release/storybook-review-extension-firefox-$VERSION.xpi"
+          ls -l release
+
+      - name: Create the GitHub release with the zips
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" release/*
+          --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
