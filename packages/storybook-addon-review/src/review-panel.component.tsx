@@ -31,9 +31,8 @@ export type ReviewPanelProps = {
 };
 
 /**
- * The Review panel: previous / next story buttons, the current story's
- * comments, then the other stories', a general comment, and Send / Discard
- * for the whole session.
+ * The Review panel: the current story's comments, then the other stories',
+ * a general comment, and Send / Discard for the whole session.
  */
 export function ReviewPanel({
 	store,
@@ -68,7 +67,6 @@ export function ReviewPanel({
 		<Wrapper>
 			<SessionLine state={state} />
 			{state.extension === "missing" ? <ExtensionNotice /> : null}
-			<StoryNav api={api} />
 			<Section aria-label="This story">
 				<Heading>
 					<span>
@@ -142,44 +140,6 @@ export function ReviewPanel({
 	);
 }
 
-/**
- * Moves through the sidebar's stories without leaving the panel: the same
- * jumps as Storybook's Alt+arrow shortcuts. Comments stay with their story.
- */
-function StoryNav({ api }: { readonly api: API }) {
-	return (
-		<Nav aria-label="Switch story">
-			<Button
-				size="small"
-				variant="outline"
-				onClick={() => api.jumpToComponent(-1)}
-			>
-				↑ Previous component
-			</Button>
-			<Button
-				size="small"
-				variant="outline"
-				onClick={() => api.jumpToStory(-1)}
-			>
-				← Previous story
-			</Button>
-			<Button size="small" variant="outline" onClick={() => api.jumpToStory(1)}>
-				Next story →
-			</Button>
-			<Button
-				size="small"
-				variant="outline"
-				onClick={() => api.jumpToComponent(1)}
-			>
-				Next component ↓
-			</Button>
-			<Muted>
-				Alt+← → for stories, Alt+↑ ↓ for components, or the sidebar.
-			</Muted>
-		</Nav>
-	);
-}
-
 function SessionLine({ state }: { readonly state: ReviewState }) {
 	switch (state.sessionStatus.kind) {
 		case "none":
@@ -192,12 +152,7 @@ function SessionLine({ state }: { readonly state: ReviewState }) {
 		case "checking":
 			return <Notice>Connecting to the agent's session…</Notice>;
 		case "open":
-			return (
-				<Notice>
-					Comment on any story. Send hands every comment, from every story, to
-					the agent.
-				</Notice>
-			);
+			return null;
 		case "closed":
 			return <Notice data-tone="negative">{state.sessionStatus.reason}</Notice>;
 		default: {
@@ -508,13 +463,6 @@ const Notice = styled.p(({ theme }) => ({
 	"&[data-tone=negative]": { color: theme.fgColor.negative },
 	code: { fontFamily: theme.typography.fonts.mono },
 }));
-
-const Nav = styled.nav({
-	display: "flex",
-	alignItems: "center",
-	gap: 6,
-	flexWrap: "wrap",
-});
 
 const Muted = styled.p(({ theme }) => ({
 	margin: 0,
