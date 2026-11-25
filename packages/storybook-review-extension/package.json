@@ -1,6 +1,6 @@
 {
   "name": "@pairprog/storybook-review-extension",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": true,
   "description": "Browser extension that lets the storybook-review addon screenshot what the user sees.",
   "type": "module",
