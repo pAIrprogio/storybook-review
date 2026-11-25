@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Annotation } from "./annotation.schema";
-import { formatResult } from "./format-result";
+import { commentNumbers, formatResult } from "./format-result";
 
 const FRAME_NODE = {
 	id: "canvas-framenode--nested",
@@ -33,6 +33,7 @@ function annotation(overrides: Partial<Annotation>): Annotation {
 		text: "Add a retry button.",
 		args: {},
 		globals: { scheme: "light" },
+		screenshotId: null,
 		createdAt: 1,
 		...overrides,
 	};
@@ -139,6 +140,46 @@ describe(formatResult, () => {
 				"Globals: scheme=light",
 			].join("\n"),
 		);
+	});
+
+	test("given a comment with a saved screenshot, when formatting, then its path follows the target", () => {
+		// Given
+		const shot = annotation({ id: "shot", screenshotId: "s-123456789" });
+
+		// When
+		const output = formatResult(
+			{ kind: "sent", annotations: [shot], general: "" },
+			".",
+			new Map([["shot", "/tmp/storybook-review/a1-screenshots/comment-1.png"]]),
+		);
+
+		// Then
+		expect(output).toContain(
+			[
+				"### 1. Whole story",
+				"Screenshot: /tmp/storybook-review/a1-screenshots/comment-1.png (what the user saw when commenting)",
+				"Globals: scheme=light",
+			].join("\n"),
+		);
+	});
+
+	test("given comments on two stories in mixed order, when numbering, then they follow the story groups", () => {
+		// Given
+		const annotations = [
+			annotation({ id: "a1", story: NOTICE }),
+			annotation({ id: "b1", story: FRAME_NODE }),
+			annotation({ id: "a2", story: NOTICE }),
+		];
+
+		// When
+		const numbers = commentNumbers(annotations);
+
+		// Then
+		expect([...numbers]).toEqual([
+			["a1", 1],
+			["a2", 2],
+			["b1", 3],
+		]);
 	});
 
 	test("given a cancelled session, when formatting, then the output starts with CANCELLED", () => {

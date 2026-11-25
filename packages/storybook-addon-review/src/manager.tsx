@@ -19,7 +19,9 @@ import {
 	REVIEW_EVENTS,
 	REVIEW_PANEL_ID,
 	REVIEW_TOOL_ID,
+	screenshotPayloadSchema,
 	type SessionKey,
+	shotIdSchema,
 	type StoryRef,
 } from "./annotation.schema";
 import {
@@ -36,6 +38,7 @@ import type { CanvasPin, CanvasState } from "./canvas-overlay.store";
 import {
 	checkSession,
 	readSession,
+	sendScreenshot,
 	tabStorage,
 } from "./session-client.adapter";
 
@@ -51,6 +54,7 @@ const PICK_SHORTCUT_LABEL = shortcutToHumanString(PICK_SHORTCUT);
 const pickedSchema = z.object({
 	storyId: z.string(),
 	target: annotationTargetSchema,
+	shotId: shotIdSchema,
 });
 
 // The addon shows only while an agent listens: in a tab the CLI opened (its
@@ -86,7 +90,11 @@ function register(api: API, session: SessionKey): void {
 		api.togglePanel(true);
 		api.setSelectedPanel(REVIEW_PANEL_ID);
 	};
-	const startDraft = (storyId: string, target: AnnotationTarget) => {
+	const startDraft = (
+		storyId: string,
+		target: AnnotationTarget,
+		screenshotId: string | null,
+	) => {
 		const story = storyRefOf(api, storyId);
 		if (story === null) return;
 		const entry = api.getData(storyId);
@@ -100,6 +108,7 @@ function register(api: API, session: SessionKey): void {
 				target,
 				args: hasArgs ? changedArgs(entry.args, entry.initialArgs) : {},
 				globals: reportedGlobals(api.getGlobals()),
+				screenshotId,
 			},
 		}));
 		openPanel();
@@ -107,8 +116,22 @@ function register(api: API, session: SessionKey): void {
 
 	api.on(REVIEW_EVENTS.picked, (payload: unknown) => {
 		const picked = pickedSchema.safeParse(payload);
-		if (picked.success) startDraft(picked.data.storyId, picked.data.target);
+		if (picked.success) {
+			startDraft(picked.data.storyId, picked.data.target, picked.data.shotId);
+		}
 	});
+	// The preview sends a pick's screenshot after the pick; it goes straight
+	// to the server, and the comment keeps only its ID.
+	api.on(REVIEW_EVENTS.screenshot, (payload: unknown) => {
+		const screenshot = screenshotPayloadSchema.safeParse(payload);
+		if (screenshot.success) void sendScreenshot(session, screenshot.data);
+	});
+	api.on(REVIEW_EVENTS.extensionStatus, (installed: unknown) =>
+		store.update((state) => ({
+			...state,
+			extension: installed === true ? "installed" : "missing",
+		})),
+	);
 	api.on(REVIEW_EVENTS.pickCancelled, () =>
 		store.update((state) => ({ ...state, picking: false })),
 	);
@@ -120,7 +143,11 @@ function register(api: API, session: SessionKey): void {
 
 	const commentOnStory = () => {
 		const storyId = api.getUrlState().storyId;
-		if (storyId !== undefined) startDraft(storyId, { kind: "story" });
+		if (storyId === undefined) return;
+		const shotId =
+			store.get().extension === "installed" ? crypto.randomUUID() : null;
+		startDraft(storyId, { kind: "story" }, shotId);
+		if (shotId !== null) api.emit(REVIEW_EVENTS.captureStory, shotId);
 	};
 	// Picking is a mode: it stays on across picks, and toggling it keeps the
 	// comment being written. A pick while one is open moves it to the new target.

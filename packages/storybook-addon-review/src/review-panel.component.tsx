@@ -67,6 +67,7 @@ export function ReviewPanel({
 	return (
 		<Wrapper>
 			<SessionLine state={state} />
+			{state.extension === "missing" ? <ExtensionNotice /> : null}
 			<StoryNav api={api} />
 			<Section aria-label="This story">
 				<Heading>
@@ -204,6 +205,22 @@ function SessionLine({ state }: { readonly state: ReviewState }) {
 			throw new Error(`Unhandled session status: ${JSON.stringify(unhandled)}`);
 		}
 	}
+}
+
+const EXTENSION_INSTALL_URL =
+	"https://github.com/pAIrprogio/storybook-review/tree/main/packages/storybook-review-extension#install";
+
+function ExtensionNotice() {
+	return (
+		<Notice>
+			Comments go without screenshots: the Storybook Review extension is not
+			installed in this browser.{" "}
+			<a href={EXTENSION_INSTALL_URL} target="_blank" rel="noreferrer">
+				Install it
+			</a>{" "}
+			to send the agent what you see.
+		</Notice>
+	);
 }
 
 type CommentListProps = {

@@ -46,7 +46,7 @@ import {
 	cliSessionSchema,
 	storyIndexSchema,
 } from "./annotation.schema";
-import { formatResult } from "./format-result";
+import { commentNumbers, formatResult } from "./format-result";
 import {
 	detectPackageManager,
 	findStorybookProject,
@@ -243,9 +243,58 @@ async function finish(
 	dir: string,
 	result: AnnotationResult,
 ): Promise<Outcome> {
+	const screenshots = await saveScreenshots(session, result);
 	await stopStorybook(session.storybookPid);
 	await rm(dir, { recursive: true, force: true });
-	return { output: formatResult(result, session.projectDir), exitCode: 0 };
+	return {
+		output: formatResult(result, session.projectDir, screenshots),
+		exitCode: 0,
+	};
+}
+
+/**
+ * Fetch each comment's screenshot from Storybook before it stops, and save
+ * it as `comment-<number>.png` in `<tmp>/storybook-review/<id>-screenshots/`,
+ * which outlives the session folder so the agent can open the files (old
+ * sessions' folders go after 24 h). Returns comment ID → file path; a
+ * comment without a screenshot is left out.
+ */
+async function saveScreenshots(
+	session: CliSession,
+	result: AnnotationResult,
+): Promise<Map<string, string>> {
+	const paths = new Map<string, string>();
+	if (result.kind !== "sent") return paths;
+	const withShot = result.annotations.filter(
+		(annotation) => annotation.screenshotId !== null,
+	);
+	if (withShot.length === 0) return paths;
+	const numbers = commentNumbers(result.annotations);
+	// session.id is hex (cliSessionSchema), safe in a path.
+	const folder = join(SESSIONS_ROOT, `${session.id}-screenshots`);
+	await mkdir(folder, { recursive: true });
+	await Promise.all(
+		withShot.map(async (annotation) => {
+			const query = new URLSearchParams({
+				id: session.id,
+				token: session.token,
+				shot: annotation.screenshotId ?? "",
+			});
+			try {
+				const response = await fetch(
+					`${baseUrl(session.port)}${REVIEW_ROUTE}/screenshot?${query}`,
+					{ signal: AbortSignal.timeout(10_000) },
+				);
+				if (!response.ok) return;
+				const path = join(folder, `comment-${numbers.get(annotation.id)}.png`);
+				await writeFile(path, Buffer.from(await response.arrayBuffer()));
+				paths.set(annotation.id, path);
+			} catch {
+				// No screenshot for this comment; its text still goes out.
+			}
+		}),
+	);
+	return paths;
 }
 
 // ---------- Storybook ----------

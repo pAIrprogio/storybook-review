@@ -3,6 +3,7 @@ import {
 	REVIEW_ROUTE,
 	type AnnotationResult,
 	parseSessionParam,
+	type ScreenshotPayload,
 	type SessionKey,
 	sessionStatusSchema,
 } from "./annotation.schema";
@@ -128,6 +129,30 @@ export async function sendResult(
 			kind: "failed",
 			message: error instanceof Error ? error.message : String(error),
 		};
+	}
+}
+
+/**
+ * Hand one screenshot to the Storybook server, where the CLI picks it up
+ * after Send. Screenshots skip `sessionStorage` (its quota is about 5 MB).
+ * A failed upload only loses the screenshot: false.
+ *
+ * @example
+ * await sendScreenshot(session, { shotId, dataUrl }); // true
+ */
+export async function sendScreenshot(
+	session: SessionKey,
+	screenshot: ScreenshotPayload,
+): Promise<boolean> {
+	try {
+		const response = await fetch(`${REVIEW_ROUTE}/screenshot`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ ...session, ...screenshot }),
+		});
+		return response.status === 204;
+	} catch {
+		return false;
 	}
 }
 
